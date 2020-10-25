@@ -36,7 +36,7 @@ class CellNetwork:
     # I ext props, (Iext, target_id), shape=(n_exts, nt), shape_id=(n_exts,?) target cell number
     # g ext props(Poisson input), (g_ext, e_ext, gbar_ext, target_id), shape=(n_erxts, nt), shape_(target_id, gbar_ext)=(n_exts, ?)
     ### units
-    # tau (ms), v (mV), t (ms), e (mV), R (mOhm), I (uV)
+    # tau (ms), v (mV), t (ms), e (mV), R (MOhm), I (nA), g(uS)
     # g (mSiemens)
     ### update, v_cells -> i_syns -> ...
     def __init__(self, **params):
@@ -137,13 +137,12 @@ class CellNetwork:
         for i in tqdm(range(_nitr), ncols=120):
             self.update()
 
-    def apply_white_noise(self):
-        self.vcells[self.count+1] += np.random.normal(loc=0, scale=self.std, size=self.nn)
+    # def apply_white_noise(self):
+    #     self.vcells[self.count+1] += np.random.normal(loc=0, scale=self.std, size=self.nn)
 
     def update(self):
         self.update_cells()
         self.update_syns()
-        self.apply_white_noise()
         self.count += 1
 
     def update_cells(self):
@@ -159,13 +158,16 @@ class CellNetwork:
         # block input current from afterhyperpolarization period
         id_ahp = _times[self.count] - self.tspk < self.tahp
         iall[id_ahp] = 0
-        # use RK4 method
-        dv1 = self.f_lif(vs, iall) * _dt
-        dv2 = self.f_lif(vs+dv1/2, iall) * _dt
-        dv3 = self.f_lif(vs+dv2/2, iall) * _dt
-        dv4 = self.f_lif(vs+dv3, iall) * _dt
-        # update
-        self.vcells[self.count+1] = vs + 1/6*(dv1+dv2+dv3+dv4)
+        ## use RK4 method
+        # dv1 = self.f_lif(vs, iall) * _dt
+        # dv2 = self.f_lif(vs+dv1/2, iall) * _dt
+        # dv3 = self.f_lif(vs+dv2/2, iall) * _dt
+        # dv4 = self.f_lif(vs+dv3, iall) * _dt
+        # # update
+        # self.vcells[self.count+1] = vs + 1/6*(dv1+dv2+dv3+dv4)
+        # use Euler-Maruyama method 
+        dv = self.f_lif(vs, iall) * _dt
+        self.vcells[self.count+1] = vs + dv + np.random.normal(loc=0, scale=self.std, size=self.nn)
         # check firing
         self.fire_bool = self.vcells[self.count+1] > self.vth
         if any(self.fire_bool):
@@ -197,7 +199,6 @@ class CellNetwork:
     ##### one cell
     def update_w_no_syn(self):
         self.update_cells_w_no_syns()
-        self.apply_white_noise()
         self.count += 1
 
     def update_cells_w_no_syns(self):
@@ -210,13 +211,16 @@ class CellNetwork:
         # block input current from afterhyperpolarization period
         id_ahp = _times[self.count] - self.tspk < self.tahp
         iall[id_ahp] = 0
-        # use RK4 method
-        dv1 = self.f_lif(vs, iall) * _dt
-        dv2 = self.f_lif(vs+dv1/2, iall) * _dt
-        dv3 = self.f_lif(vs+dv2/2, iall) * _dt
-        dv4 = self.f_lif(vs+dv3, iall) * _dt
-        # update
-        self.vcells[self.count+1] = vs + 1/6*(dv1+dv2+dv3+dv4)
+        # # use RK4 method
+        # dv1 = self.f_lif(vs, iall) * _dt
+        # dv2 = self.f_lif(vs+dv1/2, iall) * _dt
+        # dv3 = self.f_lif(vs+dv2/2, iall) * _dt
+        # dv4 = self.f_lif(vs+dv3, iall) * _dt
+        # # update
+        # self.vcells[self.count+1] = vs + 1/6*(dv1+dv2+dv3+dv4)
+        # use Euler-Maruyama method
+        dv = self.f_lif(vs, iall) * _dt
+        self.vcells[self.count+1] = vs + dv + np.random.normal(loc=0, scale=self.std, size=self.nn)
         # check firing
         self.fire_bool = self.vcells[self.count+1] > self.vth
         if any(self.fire_bool):
