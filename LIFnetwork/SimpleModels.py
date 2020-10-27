@@ -252,7 +252,7 @@ class CellNetwork:
     #         self.spks[i].append(_times[self.count+1])
 
 
-def get_params(params_cell, params_syn, cell_types, ntk):
+def get_params(params_cell, params_syn, cell_types, ntk, delay_m=0, delay_s=0):
     # cell_types, 0~N-1
     # params_cell(N, dict), tau, R, vth, v0, vmax, e 
     # params_syn(N, dict), gmax, tau, e
@@ -274,6 +274,7 @@ def get_params(params_cell, params_syn, cell_types, ntk):
     for s in write_names_syn:
         params_ntk[s] = []
     params_ntk['B']= []
+    params_ntk['delay'] = []
     ####
     # parameter allocation - cell
     for n in range(Ncells):
@@ -293,6 +294,8 @@ def get_params(params_cell, params_syn, cell_types, ntk):
                 for sin, sout in zip(read_names_syn, write_names_syn):
                     params_ntk[sout].append(params_syn[stype][sin])
                 params_ntk['B'].append(Bs[stype])
+                delay = abs(np.random.normal(loc=delay_m, scale=delay_s))
+                params_ntk['delay'].append(delay)
                 pre_ids.append(i)
                 post_ids.append(j)
     params_ntk['pre_id'] = pre_ids
@@ -325,7 +328,7 @@ def gPoisson(p, tau_r, tau_d, delay=0, t0=None, t1=None):
     isonset = isonset & (rands < p_bd)
     # calculate alpha function
     g = np.zeros(_nitr)
-    onset = -100
+    onset = 100
     for i in range(_nitr):
         if isonset[i]:
             onset = _times[i]
