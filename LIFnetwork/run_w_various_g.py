@@ -147,7 +147,7 @@ parser.add_argument('--seed', required=True, type=int)
 args = parser.parse_args()
 
 if __name__ == '__main__':
-    nrn.set_times(tmax=250, dt=0.01)
+    nrn.set_times(tmax=500, dt=0.01)
     
     nrn.set_seed(args.seed)
     fdir = './data/w_pfc/'
@@ -168,7 +168,7 @@ if __name__ == '__main__':
     # create background excitatory input; g_excs, es
     g_excs_all = np.zeros([nrn._nitr, n_alls+n_pfcs_exc+n_pfcs_inh])
     for i in range(n_alls):
-        g_excs_all[:, i] = nrn.gPoisson(0.1, 0.1, 5, delay=0, t0=0, t1=300)
+        g_excs_all[:, i] = nrn.gPoisson(0.1, 0.1, 5, delay=0, t0=0, t1=500)
     for i in range(n_pfcs_exc + n_pfcs_inh):
         g_excs_all[:, n_alls+i] = get_gext(30, 0.01, 1000, t0=50, t1=200, tau_r=0.1, tau_d=5)
 
@@ -184,7 +184,7 @@ if __name__ == '__main__':
     # ntk_w_pfcs
     for i, g_exc in enumerate(gbar_pfc_exc): # row
         for j, g_inh in enumerate(gbar_pfc_inh): # columnm
-            print(i, j)
+            print(args.seed, i, j)
 
             gbar_m = [[gbar_x, g_exc, g_inh], [gbar_x/10, g_exc/10, g_inh/10]]
             gbar_s = [[gbar_x/10, g_exc/10, g_inh/10], [gbar_x/100, g_exc/100, g_inh/100]]
