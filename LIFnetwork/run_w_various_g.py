@@ -16,7 +16,7 @@ def get_gext(f, p_pos, w_rand=100, t0=None, t1=None, tau_r=0.1, tau_d=5, d=0):
     id_onsets = []
     while i0 < i1:
         id_onsets.append(i0 + np.random.randint(-w_rand//2, w_rand//2))
-        i0 += 1e3/f/nrn._dt       
+        i0 += 1e3/f/nrn._dt
     # random values
     p_bd = p_pos * nrn._dt
     rands = np.random.uniform(low=0, high=1, size=nrn._nitr)
