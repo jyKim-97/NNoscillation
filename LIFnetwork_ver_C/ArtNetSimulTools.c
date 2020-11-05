@@ -7,6 +7,91 @@ double _dt = 0.01;
 double _s = 0.1;
 
 
+void readParams(char *fdir, char *prefix, LIFneuron **cells, ExpSyn **syns, Stim **stims, 
+                double ***spike_times, int *n_cells, int *n_syns, int *n_stims, int is_stim){
+                    
+    // open information file
+    FILE *fid_info, *fid_obj;
+    char buffer[128], fname[128];
+    int tmp_int, id_pre, id_post;
+
+    // information file
+    sprintf(fname, "%s%s_info.csv", fdir, prefix);
+    fid_info = fopen(fname, "r");
+
+    fscanf(fid_info, "%s\n", buffer); // time
+    fscanf(fid_info, "%s %d\n", buffer, n_cells); // n_cells
+    fscanf(fid_info, "%s %d", buffer, n_syns); // n_syns
+    fscanf(fid_info, "%s %d", buffer, n_stims); // n_stims
+    fgets(buffer, 128, fid_info);
+    fgets(buffer, 128, fid_info);
+
+    *cells = (LIFneuron*) malloc(sizeof(LIFneuron) * (*n_cells));
+    if (is_stim == 1){
+        *stims = (Stim*) malloc(sizeof(Stim) * (*n_stims));
+    }
+    *syns = (ExpSyn*) malloc(sizeof(ExpSyn) * (*n_syns+*n_stims));
+    *spike_times = (double**) malloc(sizeof(double*) * (*n_stims));
+
+    sprintf(fname, "%s%s_cell.csv", fdir, prefix);
+    fid_obj = fopen(fname, "r");
+    fscanf(fid_obj, "%s\n", buffer);
+
+    for (int i=0; i<*n_cells; i++){
+
+        readCellParams(fid_obj, (*cells)+i);
+
+    }
+    fclose(fid_obj);
+
+    // read stim times
+    if (is_stim == 1){
+        sprintf(fname, "%s%s_t_spike.csv", fdir, prefix);
+        fid_obj = fopen(fname, "r");
+        fscanf(fid_obj, "%s\n", buffer);
+
+        for (int i=0; i<*n_stims; i++){
+            // readStimParams(fid_obj, stims+i);
+            fscanf(fid_obj, "%d,%d,", &tmp_int, &((*stims)[i].len));
+
+            (*spike_times)[i] = (double*) malloc(sizeof(double) * (*stims)[i].len);
+
+            for (int j=0; j<(*stims)[i].len-1; j++){
+                fscanf(fid_obj, "%lf,", &((*spike_times)[i][j]));
+            }
+            fscanf(fid_obj, "%lf\n", &((*spike_times)[i][(*stims)[i].len-1]));
+
+            (*stims)[i].ref_spk = (*spike_times)[i];
+            (*stims)[i].n = 0;
+        }
+    }
+
+    // read syns
+    sprintf(fname, "%s%s_syn.csv", fdir, prefix);
+    fid_obj = fopen(fname, "r");
+    fscanf(fid_obj, "%s\n", buffer);
+    for (int i=0; i<*n_syns+*n_stims; i++){
+
+        readSynParams(fid_obj, (*syns)+i);
+        if (i < *n_syns) {
+            fscanf(fid_info, "%d,%d,%d\n", &tmp_int, &id_pre, &id_post);
+            (*syns)[i].ref_t0 = &((*cells)[id_pre].t0);
+        } else {
+            fscanf(fid_info, "%d,%d\n", &tmp_int, &id_post);
+            (*syns)[i].ref_t0 = &((*stims)[i-(*n_syns)].t0);
+        }
+
+        (*syns)[i].ref_v = &((*cells)[id_post].v);
+        (*syns)[i].ref_i = &((*cells)[id_post].i);
+        (*syns)[i].ref_is_refrac = &((*cells)[id_post].is_refrac);
+
+    }
+    fclose(fid_obj);
+    fclose(fid_info);
+
+}
+
+
 void readCellParams(FILE *fid, LIFneuron *cell){
     int tmp_int;
 
@@ -46,6 +131,16 @@ void readSynParams(FILE *fid, ExpSyn *syn){
     syn->g = 0;
 
 }
+
+// int readCurrentParams(FILE *fid, IClamp *ic){
+//     int tmp_int, id;
+
+//     fscanf(fid, "%d, %d,", &tmp_int, &id);
+//     // t_start, t_end, amp
+//     fscanf(fid, "%lf, %lf, %lf", ic->t_start, ic->t_end, ic->amp);
+
+//     return id;
+// }
 
 
 void updateLIF(LIFneuron *cell, double t){
@@ -105,15 +200,20 @@ void updateStim(Stim *stim, double *spk_times, double t){
 }
 
 double solveLIF(LIFneuron cell){
+    double dv;
     // use RK4 method
-    double dv1, dv2, dv3, dv4;
+    // double dv1, dv2, dv3, dv4;
 
-    dv1 = fLIF(cell, cell.v)*_dt;
-    dv2 = fLIF(cell, cell.v+dv1/2)*_dt;
-    dv3 = fLIF(cell, cell.v+dv2/2)*_dt;
-    dv4 = fLIF(cell, cell.v+dv3)*_dt;
+    // dv1 = fLIF(cell, cell.v)*_dt;
+    // dv2 = fLIF(cell, cell.v+dv1/2)*_dt;
+    // dv3 = fLIF(cell, cell.v+dv2/2)*_dt;
+    // dv4 = fLIF(cell, cell.v+dv3)*_dt;
 
-    return (dv1+2*dv2+2*dv3+dv4)/6;
+    // return (dv1+2*dv2+2*dv3+dv4)/6;
+
+    // user Euler method
+    dv = fLIF(cell, cell.v) * _dt;
+    return dv;
 }
 
 

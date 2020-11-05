@@ -5,6 +5,8 @@
 #include "ArtNetSimulTools.c"
 
 
+
+
 int main(){
     // testing
     LIFneuron cell;
@@ -42,6 +44,12 @@ int main(){
     fclose(fid);
     printf("Done\n");
 }
+
+
+
+
+
+
 
 
 

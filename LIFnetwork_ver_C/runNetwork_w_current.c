@@ -15,8 +15,8 @@ int main(int argc, char **argv){
     Stim *stims;
     IClamp *ics;
     double **spike_times, *vcells, t=0;
-    char *label="Prgress simulation...";
-    unsigned long long seed = 0;
+    double t0, t1, amp;
+    char *label="Progress simulation...";
     clock_t tic, toc;
 
 
@@ -27,7 +27,6 @@ int main(int argc, char **argv){
             } else if (!strcmp("--prefix", argv[i])){
                 prefix = argv[i+1];
             } else if (!strcmp("--fsave", argv[i])){
-                // sprintf(fsave, "%s", argv[i+1]);
                 fsave = argv[i+1];
             } else if (!strcmp("--tmax", argv[i])){
                 _tmax = atof(argv[i+1]);
@@ -37,33 +36,33 @@ int main(int argc, char **argv){
                 _s = atof(argv[i+1]);
             } else if (!strcmp("-c", argv[i])){
                 is_current = 1;
-            } else if (!strcmp("--seed", argv[i])){
-                seed = atoi(argv[i]);
+            } else if (!strcmp("--t0", argv[i])){
+                t0 = atof(argv[i+1]);
+            } else if (!strcmp("--t1", argv[i])){
+                t1 = atof(argv[i+1]);
+            } else if (!strcmp("--amp", argv[i])){
+                amp = atof(argv[i+1]);
             } else {
-                printf("Usage: %s [--fdir, --prefix, --fsave] filename", argv[0]);
+                printf("Usage: %s [--fdir, --prefix, --savename] filename", argv[0]);
             }
         }
-    }
-
-    if (seed == 0){
-        seed = time(NULL);
     }
 
     printf("Target file:\n");
     printf("%s%s_info.csv\n", fdir, prefix);
     printf("%s%s_cell.csv\n", fdir, prefix);
     printf("%s%s_syn.csv\n", fdir, prefix);
-    printf("%s%s_t_spike.csv\n", fdir, prefix);
     if (is_current == 1){
         printf("%s%s_IClamp.csv\n", fdir, prefix);
     }
     printf("--> result will save to %s\n", fsave);
 
-    init_genrand64(seed);
 
     // read params
-    readParams(fdir, prefix, &cells, &syns, &stims, &spike_times, &n_cells, &n_syns, &n_stims, 1);
-// run network
+    readParams(fdir, prefix, &cells, &syns, &stims, &spike_times, &n_cells, &n_syns, &n_stims, 0);
+
+    // printf("t0=%lf, t1=%lf, amp=%lf\n", t0, t1, amp);
+    // run network
 
     sprintf(fname, "%s_v.csv", fsave);
     fidv = fopen(fname, "w");
@@ -71,7 +70,11 @@ int main(int argc, char **argv){
 
     sprintf(fname, "%s_i.csv", fsave);
     fidi = fopen(fname, "w");
+    // printf("%s\n", fname);
     
+    // fidv = fopen("./out_v.csv", "w");
+    // fidi = fopen("./out_i.csv", "w");
+
     // save init v, i
     fprintf(fidv, "%f", t);
     fprintf(fidi, "%f", t);
@@ -82,28 +85,34 @@ int main(int argc, char **argv){
     fprintf(fidv, "\n");
     fprintf(fidi, "\n");
 
+
     nitr = (int) (_tmax / _dt);
     tic = clock();
     for (int n=0; n<nitr; n++){
 
-        t += _dt;
-        // update stim counter
-        for (int i=0; i<n_stims; i++){
-            updateStim(stims+i, spike_times[i], t);
-        }
-        // update synapse
-        for (int i=0; i<n_syns+n_stims; i++) {
-            updateSyn(syns+i, t);
 
+        t += _dt;
+        // update synapse
+        for (int i=0; i<n_syns; i++) {
+            updateSyn(syns+i, t);
+        }
+        // current
+        if ((t >= t0) && (t <= t1)){
+            for (int i=0; i<225; i++){ //// temporally
+                if (cells[i].is_refrac == 0){
+                    cells[i].i += amp;
+                }
+            }
         }
         // update cell & save data
         fprintf(fidv, "%f", t);
         fprintf(fidi, "%f", t);
         for (int i=0; i<n_cells; i++) {
-            fprintf(fidi, ",%f", cells[i].i);            
+            fprintf(fidi, ",%f", cells[i].i);
             updateLIF(cells+i, t);
             // save data
             fprintf(fidv, ",%f", cells[i].v);
+            
         }
         fprintf(fidv, "\n");
         fprintf(fidi, "\n");
@@ -111,19 +120,13 @@ int main(int argc, char **argv){
         if (n - (n/100)*100 == 0){
             ProgressBar(label, n, nitr, (float) ((clock() - tic)/CLOCKS_PER_SEC));
         }
-
     }
-
-    printf("\nExecution Done, %.3fs\n", (float) ((clock() - tic)/CLOCKS_PER_SEC));
     
-
+    printf("\nExecution Done, %.3fs\n", ((float) (clock() - tic)/(float) CLOCKS_PER_SEC));
+    
     free(syns);
-    for (int i=0; i<n_stims; i++){
-        free(spike_times[i]);
-    }
-    free(spike_times);
-    free(stims);
     free(cells);
+
     fclose(fidv);
     fclose(fidi);
 

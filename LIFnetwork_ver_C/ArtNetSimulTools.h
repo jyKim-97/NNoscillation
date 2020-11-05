@@ -53,10 +53,13 @@ typedef struct {
     int len, n, id_target;
 } Stim;
 
+typedef struct {
+    double t_start, t_end, amp, *ref_i;
+} IClamp;
 
 // functions
-// void readNetwork(char *fdir, char *prefix, LIFneuron **cells, ExpSyn **syns, Stim **stims, int *n_cells, int *n_syns, int *n_stims);
-// void runAll_w_save(LIFneuron **cells, ExpSyn **syns, Stim **stims, int n_cells, int n_syns, int n_stims, FILE *fid);
+void readParams(char *fdir, char *prefix, LIFneuron **cells, ExpSyn **syns, Stim **stims, 
+                double ***spike_times, int *n_cells, int *n_syns, int *n_stims, int is_stim);
 
 // update each parts
 void updateLIF(LIFneuron *cell, double t);
@@ -72,6 +75,7 @@ double fLIF(LIFneuron cell, double v);
 void readCellParams(FILE *fid, LIFneuron *cell);
 void readSynParams(FILE *fid, ExpSyn *syn);
 void readStimParams(FILE *fid, Stim *ext);
+int readCurrentParams(FILE *fid, IClamp *ic);
 
 // test function
 void runOnecell_w_current(LIFneuron *cell, double t0, double t1, double amp, double **vs);
