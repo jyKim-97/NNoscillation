@@ -29,7 +29,7 @@ def get_syn_norm(tau_r, tau_d):
 
 def print_nn_params(fdir, prefix,
                     cell_types, cnt_map, cell_type_params, syn_type_params, 
-                    ids_target=None, extern_types=None, spk_times=None, extern_syn_type_params=None, d_noise=0, overwrite=False):    
+                    ids_target=None, extern_types=None, spk_times=None, extern_syn_type_params=None, d_noise=0, g_noise_syn=0, g_noise_ext=0, overwrite=False, ischeck=True):
 
     # check parameter
     n_type_cell_max = max(cell_types)
@@ -55,18 +55,42 @@ def print_nn_params(fdir, prefix,
         prefix+'_cell.csv', prefix+'_syn.csv', prefix+'_t_spike.csv'
     ]
 
-    for fname in fnames:
-        ch = check_f_exist(fdir, fname)
-        if ch:
-            print("%s exists"%(os.path.join(fdir, fname)))    
-            if not overwrite:
-                return
-                
+    if ischeck:
+        for fname in fnames:
+            ch = check_f_exist(fdir, fname)
+            if ch:
+                print("%s exists"%(os.path.join(fdir, fname)))    
+                if not overwrite:
+                    return
+            # else:
+            #     os.remove(os.path.join(fdir, fname))
+    
+    # save ext spikes
+    ids_save = []
+    extern_saves = []
+    if ids_target is not None:
+    # save spike times
+        with open(os.path.join(fdir, prefix+'_t_spike.csv'), 'w') as fid:
+            n = 0
+            fid.write(",len,spike_times\n")
+            for i in range(len(ids_target)):
+                if (len(spk_times[i]) > 0):
+                    for _ in ids_target[i]:
+                        fid.write("%d"%(n))
+                        fid.write(",%d"%(len(spk_times[i])))
+                        for t in spk_times[i]:
+                            fid.write(",%5.3f"%(t))
+                        fid.write("\n")
+
+                    ids_save.append(ids_target[i])
+                    extern_saves.append(extern_types[i])
+                    n = n + 1
+
     # convert params
     ncells, df_cell = convert_cell_params(cell_types, cell_type_params)
-    nsyns, df_syn1, id_pres, id_posts = convert_syn_params(cnt_map, syn_type_params, is_syn=True, d_noise=d_noise)
+    nsyns, df_syn1, id_pres, id_posts = convert_syn_params(cnt_map, syn_type_params, is_syn=True, d_noise=d_noise, g_noise=g_noise_syn)
     if ids_target is not None:
-        nexts, df_syn2, _, _ = convert_syn_params(extern_types, extern_syn_type_params, is_syn=False)
+        nexts, df_syn2, _, _ = convert_syn_params(extern_saves, extern_syn_type_params, is_syn=False, g_noise=g_noise_ext)
         df_syn = pd.concat([df_syn1, df_syn2])
     else:
         nexts=0
@@ -85,7 +109,7 @@ def print_nn_params(fdir, prefix,
         
         if ids_target is not None:
             i=0
-            for target in ids_target:
+            for target in ids_save:
                 for n in target:
                     fid.write('%d,%d\n'%(i, n))
                     i += 1
@@ -94,21 +118,9 @@ def print_nn_params(fdir, prefix,
     df_cell.to_csv(os.path.join(fdir, prefix+'_cell.csv'), sep=',', mode='w', header=True, float_format="%.6f", index=True)
     df_syn.to_csv(os.path.join(fdir, prefix+'_syn.csv'), sep=',', mode='w', header=True, float_format="%.6f", index=True)
     
-    if ids_target is not None:
-    # save spike times
-        with open(os.path.join(fdir, prefix+'_t_spike.csv'), 'w') as fid:
-            n = 0
-            fid.write(",len,spike_times\n")
-            for i in range(len(ids_target)):
-                for _ in ids_target[i]:
-                    fid.write("%d"%(n));
-                    fid.write(",%d"%(len(spk_times[i])))
-                    for t in spk_times[i]:
-                        fid.write(",%5.3f"%(t))
-                    fid.write("\n")
-                    n = n + 1
 
-    print("done\n");
+
+    # print("done\n");
 
 
 def convert_cell_params(cell_types, cell_type_params):
@@ -136,7 +148,7 @@ def convert_cell_params(cell_types, cell_type_params):
     return ncells, df_cell
 
 
-def convert_syn_params(cnt_map, syn_type_params, is_syn=False, d_noise=0):
+def convert_syn_params(cnt_map, syn_type_params, is_syn=False, d_noise=0, g_noise=0):
     syn_params = dict((
         ('tau1', []), ('tau2', []), ('A', []), ('gmax', []), ('e', []), ('d', [])
     ))
@@ -156,9 +168,9 @@ def convert_syn_params(cnt_map, syn_type_params, is_syn=False, d_noise=0):
                 syn_params['tau1'].append(syn_type_params[n]['tau1'])
                 syn_params['tau2'].append(syn_type_params[n]['tau2'])
                 syn_params['A'].append(syn_type_params[n]['A'])
-                syn_params['gmax'].append(syn_type_params[n]['gmax'])
+                syn_params['gmax'].append(syn_type_params[n]['gmax']+np.random.normal(loc=0, scale=g_noise))
                 syn_params['e'].append(syn_type_params[n]['e'])
-                syn_params['d'].append(abs(syn_type_params[n]['d']+np.random.normal(0, d_noise)))
+                syn_params['d'].append(abs(syn_type_params[n]['d']+np.random.normal(loc=0, scale=d_noise)))
                 if is_syn:
                     id_pres.append(i)
                     id_posts.append(j)

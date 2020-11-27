@@ -9,7 +9,7 @@ void ProgressBar(char *label, int step, int maxstep, float etime);
 int main(int argc, char **argv){
     char *fdir, *prefix, *fsave, fname[1024];
     FILE *fidv, *fidi;
-    int n_cells, n_syns, n_stims, nitr, is_current=0;
+    int n_cells, n_syns, n_stims, nitr, n_targets;//, is_current=0;
     LIFneuron *cells;
     ExpSyn *syns;
     Stim *stims;
@@ -34,8 +34,10 @@ int main(int argc, char **argv){
                 _dt = atof(argv[i+1]);
             } else if (!strcmp("--s", argv[i])){
                 _s = atof(argv[i+1]);
-            } else if (!strcmp("-c", argv[i])){
-                is_current = 1;
+            } else if (!strcmp("--n_targets", argv[i])){
+                n_targets = atoi(argv[i+1]);
+            // } else if (!strcmp("-c", argv[i])){
+            //     is_current = 1;
             } else if (!strcmp("--t0", argv[i])){
                 t0 = atof(argv[i+1]);
             } else if (!strcmp("--t1", argv[i])){
@@ -52,9 +54,9 @@ int main(int argc, char **argv){
     printf("%s%s_info.csv\n", fdir, prefix);
     printf("%s%s_cell.csv\n", fdir, prefix);
     printf("%s%s_syn.csv\n", fdir, prefix);
-    if (is_current == 1){
-        printf("%s%s_IClamp.csv\n", fdir, prefix);
-    }
+    // if (is_current == 1){
+    //     printf("%s%s_IClamp.csv\n", fdir, prefix);
+    // }
     printf("--> result will save to %s\n", fsave);
 
 
@@ -98,7 +100,7 @@ int main(int argc, char **argv){
         }
         // current
         if ((t >= t0) && (t <= t1)){
-            for (int i=0; i<225; i++){ //// temporally
+            for (int i=0; i<n_targets; i++){ //// temporally
                 if (cells[i].is_refrac == 0){
                     cells[i].i += amp;
                 }

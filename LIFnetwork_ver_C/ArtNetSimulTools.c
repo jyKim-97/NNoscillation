@@ -63,8 +63,12 @@ void readParams(char *fdir, char *prefix, LIFneuron **cells, ExpSyn **syns, Stim
 
             (*stims)[i].ref_spk = (*spike_times)[i];
             (*stims)[i].n = 0;
+            (*stims)[i].t0 = (*spike_times)[i][0];
+
         }
     }
+
+    
 
     // read syns
     sprintf(fname, "%s%s_syn.csv", fdir, prefix);
@@ -193,10 +197,15 @@ void updateSyn(ExpSyn *syn, double t){
 
 void updateStim(Stim *stim, double *spk_times, double t){
     // printf("stim t =%lf\n", *(stim->ref_t0));
-    if (stim->n < stim->len && spk_times[stim->n+1] <= t){
-        stim->n++;
+    if (stim->n < stim->len-1){
+        if (spk_times[stim->n+1] <= t){
+            stim->n++;
         stim->t0 = spk_times[stim->n];
+        }
     }
+    // if (stim->n < stim->len && spk_times[stim->n+1] <= t){
+        
+    // }
 }
 
 double solveLIF(LIFneuron cell){
